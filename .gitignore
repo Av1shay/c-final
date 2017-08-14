@@ -8,9 +8,4 @@
 CMakeLists.txt
 backup.c
 cmake-build-debug/
-db.c
-header.h
-main.c
 makefile
-utilities.c
-validation.c
