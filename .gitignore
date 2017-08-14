@@ -1,0 +1,16 @@
+
+.idea/dictionaries/
+.idea/maman14.iml
+.idea/misc.xml
+.idea/modules.xml
+.idea/preferred-vcs.xml
+.idea/workspace.xml
+CMakeLists.txt
+backup.c
+cmake-build-debug/
+db.c
+header.h
+main.c
+makefile
+utilities.c
+validation.c
