@@ -208,7 +208,6 @@ void ob_print(word_t *code_image, word_t *data_image, int inst_count, int data_c
     free(machine_code_memory);
 }
 
-/* ----------------------------------------------------------------------------------------------------------------------------- */
 
 /**
  * Print entry/extern tables to entry/extern file
@@ -228,10 +227,6 @@ void e_print(data_table *table, int size, FILE *file){
 	}
     free(base_4_mozar_address);
 }
-
-/* ----------------------------------------------------------------------------------------------------------------------------- */
-
-/* End of db.c file */
 
 
 int update_ext_table(data_table **table, int *table_size, char *label, int address){

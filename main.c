@@ -127,7 +127,7 @@ int first_scan(FILE *fp){
 			if ( is_label ) { /* we have a label on this line, insert it to our table of signs */
                 if ( (insert_status = insert_sign(&table_signs, &table_signs_size, label, dc, 0, 0)) != 1 ) {
                     if (insert_status == -1) {
-                        printf("line %d:\tThe sign %s declared more then once\n", line_counter, label);
+                        fprintf(stderr, "line %d:\tThe sign %s declared more then once\n", line_counter, label);
                     }
                     error = 1;
                     break;
@@ -136,8 +136,8 @@ int first_scan(FILE *fp){
 			skip_white_space(line, &pos);
 			length = get_entry_string(line, arg1, &pos);	/* get the string */
 			if ( length < 0 ) {
-				printf("line %d:\tString should start and end with \"\n",line_counter);
-				error=1;
+				fprintf(stderr, "line %d:\tString should start and end with \"\n", line_counter);
+				error = 1;
 				break;
 			}
 			for ( i = 0; i < length; i++ ) { /* for each char on the string (include \0) */
@@ -348,7 +348,6 @@ int second_scan(FILE *fp){
 
     rewind(fp);
     ic = 0;
-
 
     int arg1_amethod, arg2_amethod;
 

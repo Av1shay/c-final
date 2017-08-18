@@ -231,7 +231,7 @@ int is_address_valid(int oper, int dest_operand, int src_operand){
                 return 0;	/* sub, arg1 miss || arg2 miss || src_operand == immediate */
             break;
         case 4: /* not */
-            if ( src_operand != NO_ARG || dest_operand == NO_ARG || dest_operand != IMMEDIATE )
+            if ( src_operand != NO_ARG || dest_operand == NO_ARG || dest_operand == IMMEDIATE )
                 return 0;	/* arg1 present || arg2 miss || src_operand!= immediate */
             break;
         case 5: /* clr */

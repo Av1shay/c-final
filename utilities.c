@@ -7,40 +7,45 @@
 /**
  * Skip white spaces or "\t" chars to get to the first word.
  *
- * @param str The scanned line.
- * @param i Address to save the position.
+ * @param char[]     line - The scanned line.
+ * @param int*       i - Address to save the position.
  */
-void skip_white_space(char str[LINE_MAX], int *i) {
-    while ( str[*i] ==' '|| str[*i]=='\t' )
+void skip_white_space(const char line[LINE_MAX], int *i) {
+    while ( line[*i] ==' ' || line[*i]=='\t' ) {
         (*i)++;
+    }
 }
 
 /**
  * Copies the first word of the operation line "line" beginning from "position" to "single_word"
  *
- * @param line
- * @param single_word
- * @param position
- * @return
+ * @param char[]    line - The line we are handling.
+ * @param char[]    single_word - Will hold the words at the end.
+ * @param int*      position - The index which we start counting from.
+ *
+ * @return int - The number of characters the word contains.
  */
 int get_new_word(char line[LINE_MAX], char single_word[LINE_MAX], int *position) {
     char *beginning = &line[*position]; /*start points to the start of the word*/
     int counter = 0; /*counts the number of characters the word contains*/
+
     while ( line[*position] != ':'
-            &&line[*position] != ','
-            &&line[*position] != ';'
-            &&line[*position] != '\t'
-            &&line[*position] != ' '
-            &&line[*position] != '\n'
-            &&line[*position] != '\0') {
+            && line[*position] != ','
+            && line[*position] != ';'
+            && line[*position] != '\t'
+            && line[*position] != ' '
+            && line[*position] != '\n'
+            && line[*position] != '\0') {
         (*position)++;
         counter++;
     }
+
     if ( line[*position]==':' ){
         (*position)++;
         counter++; /* we want to know if the word is a label, so we put the ':' also */
-    } else if (line[*position]==',') /* we want to advance the position by one because the comma is not a part of the word*/
+    } else if (line[*position]==',') { /* we want to advance the position by one because the comma is not a part of the word*/
         (*position)++;
+    }
 
     strncpy(single_word, beginning, (size_t) counter);
     single_word[counter]= '\0';
@@ -51,14 +56,15 @@ int get_new_word(char line[LINE_MAX], char single_word[LINE_MAX], int *position)
 /**
  * Copies the string that comes after a ".entry" operation, beginning from "position", to the variable "string".
  *
- * @param line
- * @param string
- * @param position
- * @return
+ * @param char[]    line - The line we are handling.
+ * @param char[]    string - Will hold the words at the end.
+ * @param int*      position - The index which we start counting from.
+ *
+ * @return int - The number of characters the word contains.
  */
 int get_entry_string(char line[LINE_MAX], char string[LINE_MAX], int *position) {
     char *beginning=&line[*position]; /* "beginning" points to the beginning of the word */
-    int counter=0; /* counts the number of characters the string contains */
+    int counter = 0; /* counts the number of characters the string contains */
 
     if (line[(*position)++]!='"') /*invalid string - line should begin with a quotation mark */
         return -1;
@@ -73,16 +79,18 @@ int get_entry_string(char line[LINE_MAX], char string[LINE_MAX], int *position) 
     }
     (*position)++; /*change position to the next char (after the ") */
 
-    strncpy(string, beginning+1,counter); /* copy the word without the first " */
+    strncpy(string, beginning + 1, (size_t) counter); /* copy the word without the first " */
     string[counter++]='\0';
+
     return counter; /* valid string */
 }
 
 /**
  * Return the register number
  *
- * @param reg
- * @return
+ * @param char[]    reg - The register string, i.e "r5".
+ *
+ * @return int - The register number.
  */
 int find_reg_num(char reg[LINE_MAX]) {
     return reg[1]-'0';
@@ -91,10 +99,10 @@ int find_reg_num(char reg[LINE_MAX]) {
 /**
  * Find a label address in the signs table and also report if it's external or not.
  *
- * @param label
- * @param table_signs
- * @param table_signs_size
- * @param is_external
+ * @param char*             label - The needle.
+ * @param table_of_signs*   table_signs - The haystack.
+ * @param int               table_signs_size - The size of the haystack.
+ * @param int*              is_external - Will indicate at the end weather the sign is external or not.
  *
  * @return int The label address if everything went ok, -1 otherwise.
  */
@@ -115,9 +123,9 @@ int find_label_address(char *label, table_of_signs* table_signs, int table_signs
  * Calculate size of a given matrix based on the string arg, assuming the string is already in a valid form.
  * i.e if arg = [3][6] then the size is 3 * 6 = 18.
  *
- * @param arg
+ * @param char* arg - Points the string that have the matrix form, i.e [3][7].
  *
- * @return int The result.
+ * @return int - The result.
  */
 int calculate_matrix_size(char *arg){
     int i, j, k = 0, rows = 0, columns = 0;
@@ -149,9 +157,9 @@ int calculate_matrix_size(char *arg){
  * If the number is bigger than the size of a word (10 bits) the value that will be returned is 0.
  * This function is used mainly to append data to the data segment.
  *
- * @param int_num
- * @param addressing_method
- * @return word_type
+ * @param int       int_num - The number to transform.
+ *
+ * @return word_t - The transformed word.
  */
 word_t trans_to_word(int int_num) {
     word_t opcode_num; /* this will be the number after being opcoded */
@@ -174,7 +182,7 @@ word_t trans_to_word(int int_num) {
         opcode_num.oper = int_num & mask2;
 
     } else {
-        printf("Number's size is bigger than the word size (10 bits). The opcode value returned is 0");
+        fprintf(stderr, "Number's size is bigger than the word size (10 bits). The opcode value returned is 0");
     }
 
     return opcode_num;
@@ -185,7 +193,8 @@ word_t trans_to_word(int int_num) {
  *
  * @param int   num - The number which represent the argument.
  * @param int   memory_type - The memory type, absolute, external or relocatable.
- * @return The transformed word_type. It will contain zeros if something went wrong.
+ *
+ * @return word_t - The transformed word.
  */
 word_t trans_arg_to_word(int num, int memory_type){
     word_t opcode_num;
@@ -326,7 +335,6 @@ int is_register(char *str){
  * Encode argument and place it in the code segment.
  * Since this function called from the second scan, we assume everything is valid.
  *
- *
  * @param char*     arg - The argument to encode
  * @param int       amethod - The addressing method.
  * @param word_t**  code_seg - The code segment to place the argument in.
@@ -413,10 +421,10 @@ void encode_argument(char *arg, int amethod, char *additional_arg, int arg_count
                     word_to_append = trans_regs_to_word(0, reg2_num, A);
                 }
             } else { /* SECOND_ARG */
-                if ( is_register(additional_arg) ) { /* if arg1 is also a register, we already took care of this. break out */
+                if ( is_register(additional_arg) ) { /* if arg1 is also a register, we already took care of this. leave the function */
                     return;
                 }
-                /* if only arg2 is a register, this is a destnation operand - encode it to bits 2-5 */
+                /* if only arg2 is a register, this is a destination operand - encode it to bits 2-5 */
                 reg1_num = find_reg_num(arg);
                 word_to_append = trans_regs_to_word(reg1_num, 0, A);
             }

@@ -14,7 +14,7 @@ enum {LABEL = 1, OPERATION, ARGUMENT};
 enum {DATA = 16, STRING, MAT, ENTRY, EXTERN};
 enum {FIRST_ARG, SECOND_ARG};
 
-
+/* struct that represents the signs table */
 typedef struct{
     char *label_name;
     int address;
@@ -28,7 +28,7 @@ typedef struct{
 } opers;
 
 
-/*type of word_type */
+/*type of word_type, represents a 10-bits "word" in the memory */
 typedef struct{
     unsigned int oper : 4;	/* operation name */
     unsigned int amethod_src_operand : 2;	/* addressing method of the source operand */
@@ -36,6 +36,7 @@ typedef struct{
     unsigned int memory : 2; /* memory type, absolute, external or relocatable */
 } word_t;
 
+/* a general table */
 typedef struct{
 	char *label_name;
 	int address; /* address of the label that will be covert to basis 4 "mozar" as described in the maman booklet */
@@ -49,7 +50,7 @@ int sign_already_exists(table_of_signs *table, int row_counter, char *sign_name)
 int is_address_valid(int, int, int);
 
 /* utilities */
-void skip_white_space(char *line, int *i);
+void skip_white_space(const char line[LINE_MAX], int *i);
 int get_new_word(char *, char *, int *);
 int get_entry_string(char *, char *, int *);
 void signs_table_update(table_of_signs *table, int table_size, int inst_count);
