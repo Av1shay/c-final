@@ -9,3 +9,4 @@ CMakeLists.txt
 backup.c
 cmake-build-debug/
 makefile
+/my-test.as

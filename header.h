@@ -32,7 +32,7 @@ typedef struct{
 } opers;
 
 
-/*type of word_type, represents a 10-bits "word" in the memory */
+/* type of word_type, represents a 10-bits "word" in the memory */
 typedef struct{
     unsigned int oper : 4;	/* operation name */
     unsigned int amethod_src_operand : 2;	/* addressing method of the source operand */
@@ -46,25 +46,28 @@ typedef struct{
 	int address; /* address of the label that will be covert to basis 4 "mozar" as described in the maman booklet */
 } data_table;
 
-/* validations */
+/* validation functions */
 int check_word(char *, int);
 int num_isvalid(char *);
 int is_valid_matrix_form(char *arg);
 int sign_already_exists(table_of_signs *table, int row_counter, char *sign_name);
 int is_address_valid(int, int, int);
+int is_label_defined(char *label, int addressing_method, table_of_signs *signs_table, int signs_table_size);
 
-/* utilities */
+/* utilities functions */
 void skip_white_space(const char line[LINE_MAX], int *i);
 int get_new_word(char line[LINE_MAX], char single_word[LINE_MAX], int *position);
 int get_entry_string(char line[LINE_MAX], char string[LINE_MAX], int *position);
 int find_reg_num(char reg[LINE_MAX]);
-word_t trans_to_word(int int_num);
+word_t trans_to_word(int int_num, int line_count, int *error);
 int calculate_matrix_size(char *arg);
 word_t trans_regs_to_word(int first_register_num, int second_register_num, int memory_type);
 void encode_argument(char *arg, int amethod, char *additional_arg, int arg_count, word_t **code_seg, int *seg_size, table_of_signs*, int table_signs_size, data_table **ext_table, int *ext_table_size);
 int find_label_address(char *label, table_of_signs*, int table_signs_size, int *is_external);
 void convert_word_to_base_four_mozar(word_t word, char **p);
 void convert_num_to_base_four_mozar(int num, char **p);
+void extract_mat_label(char *src_label, char **dest_label);
+int is_valid_register(char *reg);
 
 /* db functions */
 int insert_sign(table_of_signs **table, int *table_size, char *sign_name, int address, int external, int operation);

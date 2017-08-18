@@ -174,7 +174,7 @@ void ob_print(word_t *code_image, word_t *data_image, int inst_count, int data_c
     char *code_size = malloc(sizeof(char));
     char *data_size = malloc(sizeof(char));
     char *address = malloc(sizeof(char));
-    char *machine_code = malloc((sizeof(char) * BASE_4_WORD_SIZE) + 1);
+    char *machine_code = calloc(BASE_4_WORD_SIZE + 1, sizeof(char));
 
     fprintf(obj_file, "%-30s", "Base 4 Address");
     fprintf(obj_file, "Base 4 Machine-Code\n");

@@ -11,11 +11,14 @@
  * @param int*       i - Address to save the position.
  */
 void skip_white_space(const char line[LINE_MAX], int *i) {
-    while ( line[*i] ==' ' || line[*i]=='\t' ) {
+    while ( line[*i] == ' ' || line[*i]=='\t' ) {
         (*i)++;
     }
 }
 
+int is_valid_register(char *reg){
+    return strlen(reg) == 2 && reg [0] == 'r' && reg[1] <= '7' && reg[1] >= '0';
+}
 /**
  * Copies the first word of the operation line "line" beginning from "position" to "single_word"
  *
@@ -26,8 +29,8 @@ void skip_white_space(const char line[LINE_MAX], int *i) {
  * @return int - The number of characters the word contains.
  */
 int get_new_word(char line[LINE_MAX], char single_word[LINE_MAX], int *position) {
-    char *beginning = &line[*position]; /*start points to the start of the word*/
-    int counter = 0; /*counts the number of characters the word contains*/
+    char *beginning = &line[*position]; /* start points to the start of the word */
+    int counter = 0; /* counts the number of characters the word contains */
 
     while ( line[*position] != ':'
             && line[*position] != ','
@@ -43,8 +46,14 @@ int get_new_word(char line[LINE_MAX], char single_word[LINE_MAX], int *position)
     if ( line[*position]==':' ){
         (*position)++;
         counter++; /* we want to know if the word is a label, so we put the ':' also */
-    } else if (line[*position]==',') { /* we want to advance the position by one because the comma is not a part of the word*/
+
+    } else if ( line[*position] == ',' ) { /* we want to advance the position by one because the comma is not a part of the word*/
         (*position)++;
+    } else if ( line[*position] ) { /* maybe there is a comma somewhere in comma later on */
+        skip_white_space(line, position);
+        if ( line[*position] == ',' ) {
+            (*position)++;
+        }
     }
 
     strncpy(single_word, beginning, (size_t) counter);
@@ -158,10 +167,11 @@ int calculate_matrix_size(char *arg){
  * This function is used mainly to append data to the data segment.
  *
  * @param int       int_num - The number to transform.
+ * @param int*      error - Function set this to 1 if error occurs.
  *
  * @return word_t - The transformed word.
  */
-word_t trans_to_word(int int_num) {
+word_t trans_to_word(int int_num, int line_count, int *error) {
     word_t opcode_num; /* this will be the number after being opcoded */
     opcode_num.oper = opcode_num.amethod_src_operand = opcode_num.amethod_dest_operand = opcode_num.memory = 0; /* init opcode num to be 0 */
 
@@ -170,19 +180,20 @@ word_t trans_to_word(int int_num) {
         int mask2 = 15; /* mask for the "oper" member, which should have four bits */
 
         /* Start shifting from right to left, set each value to the relevant member */
-        opcode_num.memory = int_num & mask;
+        opcode_num.memory = (unsigned) int_num & mask;
         int_num >>= 2;
 
-        opcode_num.amethod_dest_operand = int_num & mask;
+        opcode_num.amethod_dest_operand = (unsigned) int_num & mask;
         int_num >>= 2;
 
-        opcode_num.amethod_src_operand = int_num & mask;
+        opcode_num.amethod_src_operand = (unsigned) int_num & mask;
         int_num >>= 2;
 
-        opcode_num.oper = int_num & mask2;
+        opcode_num.oper = (unsigned) int_num & mask2;
 
     } else {
-        fprintf(stderr, "Number's size is bigger than the word size (10 bits). The opcode value returned is 0");
+        fprintf(stderr, "line %d:\tNumber's size is bigger than the word size (10 bits).\n", line_count);
+        (*error) = 1;
     }
 
     return opcode_num;
@@ -204,18 +215,18 @@ word_t trans_arg_to_word(int num, int memory_type){
         int mask = 3; /* mask for the ints that should have only one bits */
         int mask2 = 15; /* mask for the "oper" member, which should have four bits */
 
-        opcode_num.memory = memory_type;
+        opcode_num.memory = (unsigned) memory_type;
 
-        opcode_num.amethod_dest_operand = num & mask;
+        opcode_num.amethod_dest_operand = (unsigned) num & mask;
         num >>= 2;
 
-        opcode_num.amethod_src_operand = num & mask;
+        opcode_num.amethod_src_operand = (unsigned) num & mask;
         num >>= 2;
 
-        opcode_num.oper = num & mask2;
+        opcode_num.oper = (unsigned) num & mask2;
 
     } else {
-        printf("Number's size is bigger than the word size (10 bits). The opcode value returned is 0");
+        fprintf(stderr, "Number's size is bigger than the word size (10 bits). The opcode value returned is 0.\n");
     }
 
     return opcode_num;
@@ -248,7 +259,7 @@ word_t trans_regs_to_word(int first_register_num, int second_register_num, int m
 
 
     } else {
-        printf("Number's size is bigger than the word size (10 bits). The opcode value returned is 0");
+        fprintf(stderr, "Number's size is bigger than the word size (10 bits). The opcode value returned is 0.\n");
     }
 
     return opcode_num;
@@ -264,7 +275,7 @@ word_t trans_regs_to_word(int first_register_num, int second_register_num, int m
 void extract_mat_label(char *src_label, char **dest_label){
     int i = 0;
 
-    while ( src_label[i] != '[' ) {
+    while ( src_label[i] != '[' && i < strlen(src_label) ) {
         (*dest_label)[i] = src_label[i];
         i++;
     }
@@ -477,7 +488,7 @@ char *reverse_string(char *str){
  * a - 0, b - 1, c - 2, d - 3.
  *
  * @param word_t    word - The word to convert.
- * @param char **   p - The pointer that will point to the converted string.
+ * @param char **   p - Pointer that will point to the converted string at the end.
  */
 void convert_num_to_base_four_mozar(int num, char **p){
     int i = 0;
@@ -523,14 +534,15 @@ void convert_num_to_base_four_mozar(int num, char **p){
 }
 
 /**
+ * Convert a word (word type) to base 4 "mozar".
  *
- * @param word
- * @param p
+ * @param word_t    word - The word to convert.
+ * @param char**    p - Pointer that will point to the converted word at the end.
  */
 void convert_word_to_base_four_mozar(word_t word, char **p){
     int mask = 3; /* mask the last two bits */
     int num_to_convert; /* will hold the number that we gonna convert each time */
-    char *p1, *p2, *p3, *p4, *p5; /* these pointers point on each individual base 4 mozar chars */
+    char *p1, *p2, *p3, *p4, *p5; /* these pointers point on each individual base 4 mozar char */
 
     p1 = malloc(sizeof(char));
     p2 = malloc(sizeof(char));

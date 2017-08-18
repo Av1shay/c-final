@@ -1,25 +1,27 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include <math.h>
+#include <stdlib.h>
 #include "header.h"
 
 opers valid_operations[]={	/* array of the valid operations */
-	{"mov",0},
-	{"cmp",1},
-	{"add",2},
-	{"sub",3},
-	{"not",4},
-	{"clr",5},
-	{"lea",6},
-	{"inc",7},
-	{"dec",8},
-	{"jmp",9},
-	{"bne",10},
-	{"red",11},
-	{"prn",12},
-	{"jsr",13},
-	{"rts",14},
-	{"stop",15}
+	{"mov", 0},
+	{"cmp", 1},
+	{"add", 2},
+	{"sub", 3},
+	{"not", 4},
+	{"clr", 5},
+	{"lea", 6},
+	{"inc", 7},
+	{"dec", 8},
+	{"jmp", 9},
+	{"bne", 10},
+	{"red", 11},
+	{"prn", 12},
+	{"jsr", 13},
+	{"rts", 14},
+	{"stop", 15}
 };
 
 
@@ -88,6 +90,71 @@ static int check_operation(char op[LINE_MAX]) {
 }
 
 /**
+ * Check for validity of matrix form that been accessed.
+ *
+ * @param char* arg - The argument (or operand).
+ * @return 1 if valid, 0 otherwise.
+ */
+int is_valid_matrix_access_form(char *arg){
+    int i, j, k = 0;
+    int first_par_flag = 0; /* this will tell us if we are after the first parenthesis checks */
+    int open_pars_counter = 0; /* count the number of parenthesis */
+    size_t arg_len = strlen(arg);
+    char *extracted_label = malloc(sizeof(char) * arg_len), *first_reg, *second_reg;
+
+    extract_mat_label(arg, &extracted_label);
+    if ( !strlen(extracted_label) || !check_word(extracted_label, LABEL) ) { /* check for label validity */
+        free(extracted_label);
+        return 0;
+    }
+
+    free(extracted_label);
+    first_reg = malloc(sizeof(char) * 3);
+    second_reg = malloc(sizeof(char) * 3);
+
+    for ( i = 0; i < arg_len; i++ ) {
+        if ( arg[i] == '[' && !first_par_flag ) {
+            first_par_flag = 1;
+            open_pars_counter++;
+            for ( j = i+1; arg[j] != ']'; j++ ) {
+                if ( k > 2 ) { /* register must have two characters */
+                    free(first_reg);
+                    free(second_reg);
+                    return 0;
+                }
+                first_reg[k++] = arg[j];
+            }
+            first_reg[k] = '\0';
+            k = 0;
+        } else if ( arg[i] == '[' ) {
+            open_pars_counter++;
+            for ( j = i+1; arg[j] != ']'; j++ ) {
+                if ( k > 2 ) {
+                    free(first_reg);
+                    free(second_reg);
+                    return 0;
+                }
+                second_reg[k++] = arg[j];
+            }
+            second_reg[k] = '\0';
+        }
+    }
+
+    /* check for registers validity and check that we have exactly two pairs of parenthesis */
+    if ( ! is_valid_register(first_reg) || ! is_valid_register(second_reg) || open_pars_counter != 2 ) {
+        free(first_reg);
+        free(second_reg);
+        return 0;
+    }
+
+    free(first_reg);
+    free(second_reg);
+
+    return 1;
+
+}
+
+/**
  * Checks argument syntax validity.
  *
  * @param char[]    arg - The argument.
@@ -95,15 +162,19 @@ static int check_operation(char op[LINE_MAX]) {
  */
 static int check_argument(char arg[LINE_MAX]){
     if ( arg[0] == '#' ) {
-        if ( num_isvalid(arg+1) == 0 ) { /* if the rest of the number isn't valid - error*/
+        if ( !num_isvalid(arg+1) ) { /* if the rest of the number isn't valid - error*/
             return -1;
         }
+        if ( atoi(arg+1) > pow(2, 8) || atoi(arg+1) < -pow(2, 8)){ /* if the immediate number exceed the bunderies of 8 bits */
+            return -1;
+        }
+
         return IMMEDIATE; /* no error - immediate addressing */
     }
 	if ( check_word(arg, LABEL) ) { /* direct addressing */
         return DIRECT;
     }
-    if ( is_valid_matrix_form(arg) ) {
+    if ( is_valid_matrix_access_form(arg) ) {
         return MATRIX_ACCESS;
     }
 	if ( strlen(arg) == 2 && arg [0] == 'r' && arg[1] <= '7' && arg[1] >= '0' ) {
@@ -140,14 +211,18 @@ int check_word(char word[LINE_MAX], int type){
  * @return bool
  */
 int num_isvalid(char *arg){
-	unsigned int i;
 
-	if ( arg[0]=='\0' ) { /* if the word is empty - it's invalid, return 0 */
+	unsigned int i;
+    int num = atoi(arg);
+
+	if ( arg[0] == '\0' ) { /* if the word is empty - it's invalid, return 0 */
         return 0;
     }
-    if ( arg[0]!='+'&&arg[0]!='-'&& !isdigit(arg[0]) ) { /* it could start with '+', '-' or digit */
+
+    if ( arg[0] != '+' && arg[0] != '-' && !isdigit(arg[0]) ) { /* it could start with '+', '-' or digit */
         return 0;
     }
+
     for ( i = 1; i < strlen(arg); i++ ) { /* the other string must be digits */
         if ( !isdigit(arg[i]) ) { /* if there is a character that is not a digit */
             printf("**%i", arg[i]);
@@ -159,7 +234,7 @@ int num_isvalid(char *arg){
 }
 
 /**
- * Check if a given argument is in the form of a matrix access (i.e - "mat[2][3]").
+ * Check if a given argument is in the form of a matrix that going to set (i.e - "[2][3]").
  *
  * @param char* arg - The argument to test.
  *
@@ -289,5 +364,46 @@ int is_address_valid(int oper, int dest_operand, int src_operand){
         default:
             return 1;
 
+    }
+}
+
+/**
+ * Check if a label is defined.
+ *
+ * @param char*             label - The label to test.
+ * @param int               addressing_method - The addressing method.
+ * @param table_of_signs*   signs_table The signs table.
+ * @param int               signs_table_size - The size of the signs table.
+ *
+ * @return 1 if the label defined, 0 if not.
+ */
+int is_label_defined(char *label, int addressing_method, table_of_signs *signs_table, int signs_table_size){
+    int i;
+    char *extracted_label;
+
+    switch ( addressing_method ) {
+        case IMMEDIATE: case DIRECT_REGISTER:
+            return 1;
+        case DIRECT:
+            for ( i = 0; i < signs_table_size; i++ ) {
+                if( strcmp(signs_table[i].label_name, label) == 0 ) {
+                    return 1;
+                }
+            }
+            return 0;
+        case MATRIX_ACCESS:
+            extracted_label = malloc((sizeof(char) * strlen(label)) + 1);
+            extract_mat_label(label, &extracted_label);
+            for ( i = 0; i < signs_table_size; i++ ) {
+                if( strcmp(signs_table[i].label_name, extracted_label) == 0 ) {
+                    free(extracted_label);
+                    return 1;
+                }
+            }
+            free(extracted_label);
+            return 0;
+
+        default:
+            return 1;
     }
 }

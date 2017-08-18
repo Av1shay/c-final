@@ -30,8 +30,8 @@ int ext_size;  /* size of extern table */
  *
  * @return int 0 if everything went OK, 1 otherwise.
  */
-    int first_scan(FILE *fp){
-    int matrix_size, i;
+int first_scan(FILE *fp){
+    int matrix_size, i, local_error;
     int line_counter = 0; /* line number */
 	int error = 0; /* 1 if we found an error */
 	char line[LINE_MAX], temp[LINE_MAX], label[LINE_MAX], oper[LINE_MAX], arg1[LINE_MAX], arg2[LINE_MAX];
@@ -44,7 +44,7 @@ int ext_size;  /* size of extern table */
 	ic = 100; dc = 0;
 
 	while ( fgets(line, LINE_MAX, fp) ) { /* get line */
-		pos = 0;
+		pos = local_error = 0;
         register_arg_flag = 0; /* not register yet */
 		is_label = 0; /* not label yet */
 		line_counter++; /* line counter is increased */
@@ -93,11 +93,11 @@ int ext_size;  /* size of extern table */
 
 			if ( is_label == 1 ) { /* we have a label on this line, insert it to our table of signs */
                 if ( (insert_status = insert_sign(&table_signs, &table_signs_size, label, dc, 0, 0)) != 1 ) {
-                    if (insert_status == -1) {
-                        printf("line %d:\tThe sign %s declared more then once\n", line_counter, label);
+                    if ( insert_status == -1 ) {
+                        fprintf(stderr, "line %d:\tThe sign %s declared more then once\n", line_counter, label);
                     }
                     error = 1;
-                    break;
+                    continue;
                 }
             }
 
@@ -107,24 +107,28 @@ int ext_size;  /* size of extern table */
 				int num;
 				word_t op_num;
 				if ( !num_isvalid(arg1) ) { /* if it's invalid number */
-					fprintf(stderr, "line %d:\t invalid number: %s\n", line_counter, arg1);
+					fprintf(stderr, "line %d:\tinvalid number: %s\n", line_counter, arg1);
 					error = 1;
+                    local_error = 1;
 					break;
 				}
-				num = atoi(arg1); /* translate the number */
-				op_num = trans_to_word(num); /* change it to word_type */
+				num = atoi(arg1); /* transform the number */
+				op_num = trans_to_word(num, line_counter, &error); /* change it to word_type */
 				if ( !code_insert(&data_seg, &dc, op_num) ) { /* add the data word to the data table */
 					error = 1;
+                    local_error = 1;
 					break;
 				}
 				skip_white_space(line, &pos);
 				length = get_new_word(line, arg1, &pos); /* get the next word (of data) */
 			}
+
+            if ( local_error ) continue;
+
 			skip_white_space(line, &pos);
-			if ( line[pos] != '\n' ) { /* if the last char wasn't \n */
+			if ( line[pos] != '\n' && line[pos] != '\0' ) { /* if the last char wasn't \n and wasn't \0 */
 				fprintf(stderr, "line %d:\tinvalid list number\n", line_counter);
-				error=1;
-				break;
+				error = 1;
 			}
 			continue;
 		}
@@ -145,16 +149,17 @@ int ext_size;  /* size of extern table */
 			if ( length < 0 ) {
 				fprintf(stderr, "line %d:\tString should start and end with \"\n", line_counter);
 				error = 1;
-				break;
+                continue;
 			}
 			for ( i = 0; i < length; i++ ) { /* for each char on the string (include \0) */
 				int num = arg1[i];
                 word_t op_num;
 
-				op_num = trans_to_word(num); /* change it to word_type */
+				op_num = trans_to_word(num, line_counter, &error); /* change it to word_type */
+
 				if ( !code_insert(&data_seg, &dc, op_num) ) { /* add this sign to data table */
 					error = 1;
-					break;
+                    continue;
 				}
 			}
 			skip_white_space(line, &pos);
@@ -162,7 +167,6 @@ int ext_size;  /* size of extern table */
 			if ( length > 0 ) { /* if there was another word after the string */
 				fprintf(stderr, "line %d:\t.string should have one argument\n", line_counter);
 				error = 1;
-				break;
 			}
 			continue;
 		}
@@ -176,23 +180,17 @@ int ext_size;  /* size of extern table */
                         fprintf(stderr, "line %d:\tThe sign %s declared more then once\n", line_counter, label);
                     }
                     error = 1;
-                    break;
+                    continue;
                 }
             }
 
             skip_white_space(line, &pos);
             get_new_word(line, arg1, &pos); /* get matrix rows/columns count */
-            if ( !is_valid_matrix_form(arg1) ) {
-                fprintf(stderr, "line %d:\tThe matrix declaration is not valid.\n", line_counter);
-                error = 1;
-                break;
-            }
-
             matrix_size = calculate_matrix_size(arg1);
             if ( matrix_size < 1 ) {
                 fprintf(stderr, "line %d:\tMatrix rows and columns must be greater then zero.\n", line_counter);
                 error = 1;
-                break;
+                continue;
             }
 
             skip_white_space(line, &pos);
@@ -202,14 +200,16 @@ int ext_size;  /* size of extern table */
                 int num;
                 word_t op_num;
                 if ( !num_isvalid(arg2) ) { /* if it's invalid number */
-                    printf("line %d:\t invalid number: %s\n", line_counter, arg2);
-                    error=1;
+                    fprintf(stderr, "line %d:\tinvalid number: %s\n", line_counter, arg2);
+                    error = 1;
+                    local_error = 1;
                     break;
                 }
                 num = atoi(arg2); /* translate the number */
-                op_num = trans_to_word(num); /* change it to word_type */
+                op_num = trans_to_word(num, line_counter, &error); /* change it to word_type */
                 if ( !code_insert(&data_seg, &dc, op_num) ) { /* add the data number to the data table */
                     error = 1;
+                    local_error = 1;
                     break;
                 }
                 skip_white_space(line, &pos);
@@ -217,11 +217,12 @@ int ext_size;  /* size of extern table */
                 i++;
             }
 
+            if ( local_error ) continue;
+
             skip_white_space(line, &pos);
-            if ( (line[pos] != '\n' &&  line[pos] != '\0') || i != matrix_size ) { /* if the last char wasn't \n or \0, or if the numbers count doesn't fit the matrix size */
-                fprintf(stderr, "line %d:\tError trying to assign list number to the matrix %s, the list is invalid.\n", line_counter, label);
+            if ( (line[pos] != '\n' &&  line[pos] != '\0') || i > matrix_size ) { /* if the last char wasn't \n or \0, or if there are more number than matrix size */
+                fprintf(stderr, "line %d:\tError trying to assign list number to the matrix, the list is invalid.\n", line_counter);
                 error = 1;
-                break;
             }
             continue;
         }
@@ -235,14 +236,13 @@ int ext_size;  /* size of extern table */
                     fprintf(stderr, "line %d:\tThe sign %s declared more then once\n", line_counter, arg1);
                 }
                 error = 1;
-				break;
+                continue;
 			}
 			skip_white_space(line, &pos);
 			length = get_new_word(line, arg1, &pos);
 			if ( length > 0 ){ /* if there was another word after the extern */
 				fprintf(stderr, "line %d:\t.extern should have one argument\n",line_counter);
 				error = 1;
-				break;
 			}
 			continue;
 		}
@@ -251,10 +251,10 @@ int ext_size;  /* size of extern table */
         if ( is_label == 1 ) { /* we have a label on this line */
             if ( (insert_status = insert_sign(&table_signs, &table_signs_size, label, ic, 0, 1)) != 1 ) {
                 if ( insert_status == -1 ) {
-                    printf("line %d:\tThe sign %s declared more then once\n", line_counter, label);
+                    fprintf(stderr, "line %d:\tThe sign %s declared more then once\n", line_counter, label);
                 }
                 error = 1;
-                break;
+                continue;
             }
         }
         ic++; /* we surely have a new word for the operation */
@@ -291,7 +291,7 @@ int ext_size;  /* size of extern table */
         }
 
 		if ( (valid = check_word(arg2, ARGUMENT)) == -1 ) { /*/if the argument2 is invalid*/
-			printf("line %d:\tinvalid argument: '%s'\n", line_counter, arg2);
+			fprintf(stderr, "line %d:\tinvalid argument: '%s'\n", line_counter, arg2);
 			error=1;
 			continue;
 		}
@@ -311,9 +311,9 @@ int ext_size;  /* size of extern table */
 		/* ------------ EXCEPTION ARGS  --------------- */
 		skip_white_space(line, &pos);
 		if ( (line[pos] != '\n') && (line[pos] != '\0') ){ /*if after the 2 arguments we have more */
-			printf("line %d:\ttoo much parameters\n", line_counter);
+			fprintf(stderr, "line %d:\ttoo much parameters\n", line_counter);
 			error = 1;
-			break;
+            continue;
 		}
 	}
 
@@ -387,15 +387,14 @@ int second_scan(FILE *fp){
             skip_white_space(line, &pos);
             get_new_word(line, arg1, &pos);
             if ( ! update_ent_table(&ent, &ent_size, arg1, table_signs, table_signs_size) ) { /* update the ent table */
-                printf("line %d:\tError trying to add value to the entry table.\n", line_counter);
+                fprintf(stderr, "line %d:\tError trying to add value %s to the entry table.\n", line_counter, arg1);
                 error = 1;
-                break;
+                continue;
             }
             length = get_new_word(line, arg2, &pos);
             if ( length > 0 ) { /* if there was another word after the entry */
-                printf("line %d:\t.entry should have one argument\n", line_counter);
+                fprintf(stderr, "line %d:\t.entry should have one argument\n", line_counter);
                 error = 1;
-                break;
             }
             continue;
         }
@@ -425,6 +424,14 @@ int second_scan(FILE *fp){
             }
         }
 
+        if ( arg1_exists && !is_label_defined(arg1, arg1_amethod, table_signs, table_signs_size) ) {
+            fprintf(stderr, "line %d:\tUndefined label: %s\n", line_counter, arg1);
+        }
+        if ( arg2_exists && !is_label_defined(arg2, arg2_amethod, table_signs, table_signs_size) ) {
+            fprintf(stderr, "line %d:\tUndefined label: %s\n", line_counter, arg2);
+        }
+
+
         if ( ! is_address_valid(address, arg1_exists ? arg1_amethod : NO_ARG, arg2_exists ? arg2_amethod : NO_ARG) ) {
             fprintf(stderr, "line %d:\tinvalid address\n", line_counter);
             error = 1;
@@ -443,7 +450,7 @@ int second_scan(FILE *fp){
 
         /* encode the operation */
         if ( ! code_insert(&code_seg, &ic, current_code) ) {
-            printf("line %d:\tFailed to insert code.\n", line_counter);
+            fprintf(stderr, "line %d:\tFailed to insert code.\n", line_counter);
             error = 1;
             continue;
         }
@@ -465,7 +472,7 @@ int second_scan(FILE *fp){
         /* ------------ EXCEPTION ARGS  --------------- */
         skip_white_space(line, &pos);
         if ( line[pos] != '\n' && line[pos] != '\0' ) { /*if after the 2 arguments we have more */
-            printf("line %d:\ttoo much parameters\n",line_counter);
+            fprintf(stderr, "line %d:\ttoo much parameters\n",line_counter);
             error = 1;
             break;
         }
@@ -475,7 +482,7 @@ int second_scan(FILE *fp){
 }
 
 /**
- * Handling User Interactive. Get Files, Processing, And Generating Error & INFO.
+ * Handling User Interactive. get files, processing and generating error & info.
  *
  * @param int       argc - Number of argument.
  * @param char**    argv - Array of arguments.
@@ -516,18 +523,18 @@ int main(int argc, char *argv[]){
 
 		if ( first_scan(fp) == 1 ) {  /* if there was a problem on first scan */
 			fclose(fp);
-			printf("  ===========\n");
 			free(code_seg);
 			free(data_seg);
 			free(table_signs);
+            putchar('\n');
 			continue;
 		}
 		if ( second_scan(fp) == 1 ) {  /* if there was a problem on second scan */
 			fclose(fp);
-			printf("  ===========\n");
 			free(code_seg);
 			free(data_seg);
 			free(table_signs);
+            putchar('\n');
 			continue;
 		}
 
@@ -536,7 +543,7 @@ int main(int argc, char *argv[]){
 			strcpy(name, argv[i]);
 			name = strcat(name, ".ob");  /* add .ob */
 			if ( !(obj_file = fopen(name,"w") ) ) { /*  open the file for write */
-				printf( "ERROR: cannot open file: %s\n", name);
+				fprintf(stderr, "Cannot open file: %s\n", name);
 				return 1;
 			}
 			ob_print(code_seg, data_seg, ic, dc, obj_file);  /* print to OB */
@@ -572,8 +579,13 @@ int main(int argc, char *argv[]){
 		free(code_seg);
 		free(data_seg);
 		free(table_signs);
-		fclose(fp);	
-		printf("  ===========\n");
+		fclose(fp);
+
+        putchar('\n');
+
 	}
+
+    printf("===========\n");
+
 	return 0;
 }
