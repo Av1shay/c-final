@@ -6,16 +6,15 @@
 
 /**
  * Add "sign_name" to the signs table.
- * The sign will be entered in the upcoming position (table_size-1) and will get the parameters "num" for num and type for the type of the address:
- * d (for data), c (for code), n (for non-final external), f (for final external)
  *
- * @param signs_table
- * @param table_size
- * @param sign_name
- * @param address the address of the sign
- * @param external whether it is an external variable or not, 0 - false, 1 - true, 2 - unknown
- * @param operation whether it is an operation or not.
- * @return 1 if the sign entered successfully, -1 if the sign already exists in the table, -2 on memory error.
+ * @param table_of_signs**          signs_table - The signs table. Double pointer as we want to change it.
+ * @param int*                      table_size - The size of the table.
+ * @param char*                     sign_name - The sign to insert.
+ * @param int                       address - The address of the sign
+ * @param int                       external - Whether it is an external variable or not, 0 - false, 1 - true, 2 - unknown
+ * @param int                       operation - Whether it is an operation or not.
+ *
+ * @return int - 1 if the sign entered successfully, -1 if the sign already exists in the table, -2 on memory error.
  */
 int insert_sign(table_of_signs **table, int *table_size, char *sign_name, int address, int external, int operation){
 	size_t new_table_size;
@@ -50,9 +49,9 @@ int insert_sign(table_of_signs **table, int *table_size, char *sign_name, int ad
 /**
  * Updates the table signs so that data will appear after the code (data label = data label + instruction counter).
  *
- * @param signs_table The table to update.
- * @param table_size The size of the table so we'll be able to loop over it.
- * @param inst_count The IC counter.
+ * @param table_of_signs*       table - The table to update.
+ * @param int                   table_size - The size of the table so we'll be able to loop over it.
+ * @param int                   inst_count - The IC counter.
  */
 void signs_table_update(table_of_signs *table, int table_size, int inst_count) {
 	int i;
@@ -64,18 +63,19 @@ void signs_table_update(table_of_signs *table, int table_size, int inst_count) {
     }
 }
 
-/* ----------------------------------------------------------------------------------------------------------------------------- */
 
 /**
- * Update the entry table.
+ * Update the entry table with a new label/address.
  *
- * @param signs_table
- * @param signs_size
- * @param entry_table
- * @param entry_size
- * @return
+ * @param data_table**      ent_table - Pointer to point the entry table.
+ * @param int*              ent_size - Pointer to the size of the entry table.
+ * @param char*             ent_label - The label to insert.
+ * @param table_of_signs*   table_signs - Pointer to the table of signs.
+ * @param int               table_of_sings_size -The size of the table of signs as we want to loop over it.
+ *
+ * @return int - 1 if update went successfully, 0 otherwise.
  */
-int ent_table_update(data_table **ent_table, int *ent_size, char *ent_label, table_of_signs *table_signs, int table_of_sings_size) {
+int update_ent_table(data_table **ent_table, int *ent_size, char *ent_label, table_of_signs *table_signs, int table_of_sings_size) {
 	int i;
     size_t new_table_size;
 
@@ -102,6 +102,36 @@ int ent_table_update(data_table **ent_table, int *ent_size, char *ent_label, tab
     (*ent_size)--; /* the size hasn't changed */
 
     return 0; /* failed to update the entry table */
+}
+
+/**
+ * Update the external table with a new label/address.
+ * 
+ * @param data_table*   table - The table to update.
+ * @param int*          table_size - The size of the table.
+ * @param char*         label - The label to insert.
+ * @param int           address - The address to insert.
+ *
+ * @return int 1 if everything went OK, 0 otherwise.
+ */
+int update_ext_table(data_table **table, int *table_size, char *label, int address){
+    size_t new_table_size;
+
+    (*table_size)++;
+    new_table_size = (*table_size) * sizeof(data_table);
+    *table = realloc(*table, new_table_size); /* memory allocation for the table new cell */
+    (*table)[(*table_size)-1].label_name = (char *)malloc(strlen(label)); /*memory allocation for the new sign name */
+
+    if ( !(*table) || !(*table)[(*table_size)-1].label_name ) { /* if there is a memory allocation problem */
+        printf("Failed to add the label %s to te externa label.\n", label);
+        (*table_size)--; /* the size hasn't changed */
+        return 0;
+    }
+
+    strcpy((*table)[(*table_size)-1].label_name, label);
+    (*table)[(*table_size)-1].address = (unsigned) address;
+
+    return 1;
 }
 
 /**
@@ -212,39 +242,18 @@ void ob_print(word_t *code_image, word_t *data_image, int inst_count, int data_c
 /**
  * Print entry/extern tables to entry/extern file
  *
- * @param en_xtrn_table
- * @param size
- * @param en_xtrn_file
+ * @param data_table*   table - The table to print.
+ * @param int           table_size - Size of the table.
+ * @param FILE*         file - The file to print to.
  */
-void e_print(data_table *table, int size, FILE *file){
+void e_print(data_table *table, int table_size, FILE *file){
 	int i;
     char *base_4_mozar_address = malloc(sizeof(char));
 
-	for ( i = 0; i < size; i++ ) { /* for each cell of the table */
+	for ( i = 0; i < table_size; i++ ) { /* for each cell of the table */
 		convert_num_to_base_four_mozar(table[i].address, &base_4_mozar_address);
         fprintf(file, "%-30s", table[i].label_name);
         fprintf(file, "%s\n", base_4_mozar_address);
 	}
     free(base_4_mozar_address);
-}
-
-
-int update_ext_table(data_table **table, int *table_size, char *label, int address){
-    size_t new_table_size;
-
-    (*table_size)++;
-    new_table_size = (*table_size) * sizeof(data_table);
-    *table = realloc(*table, new_table_size); /* memory allocation for the table new cell */
-    (*table)[(*table_size)-1].label_name = (char *)malloc(strlen(label)); /*memory allocation for the new sign name */
-
-    if ( !(*table) || !(*table)[(*table_size)-1].label_name ) { /* if there is a memory allocation problem */
-        printf("Failed to add the label %s to te externa label.\n", label);
-        (*table_size)--; /* the size hasn't changed */
-        return 0;
-    }
-
-    strcpy((*table)[(*table_size)-1].label_name, label);
-    (*table)[(*table_size)-1].address = (unsigned) address;
-
-    return 1;
 }

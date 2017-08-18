@@ -389,7 +389,7 @@ int second_scan(FILE *fp){
         if ( address == ENTRY ) {
             skip_white_space(line, &pos);
             get_new_word(line, arg1, &pos);
-            if ( ! ent_table_update(&ent, &ent_size, arg1, table_signs, table_signs_size) ) { /* update the ent table */
+            if ( ! update_ent_table(&ent, &ent_size, arg1, table_signs, table_signs_size) ) { /* update the ent table */
                 printf("line %d:\tError trying to add value to the entry table.\n", line_counter);
                 error = 1;
                 break;

@@ -51,19 +51,21 @@ int is_address_valid(int, int, int);
 
 /* utilities */
 void skip_white_space(const char line[LINE_MAX], int *i);
-int get_new_word(char *, char *, int *);
-int get_entry_string(char *, char *, int *);
-void signs_table_update(table_of_signs *table, int table_size, int inst_count);
-int find_reg_num(char *);
-int insert_sign(table_of_signs **table, int *table_size, char *sign_name, int address, int external, int operation);
+int get_new_word(char line[LINE_MAX], char single_word[LINE_MAX], int *position);
+int get_entry_string(char line[LINE_MAX], char string[LINE_MAX], int *position);
+int find_reg_num(char reg[LINE_MAX]);
 word_t trans_to_word(int int_num);
-int code_insert(word_t **data_code_image,int *size, word_t new_word);
 int calculate_matrix_size(char *arg);
-int ent_table_update(data_table **ent_table, int *ent_size, char *ent_label, table_of_signs *table_signs, int table_of_sings_size);
 word_t trans_regs_to_word(int first_register_num, int second_register_num, int memory_type);
 void encode_argument(char *arg, int amethod, char *additional_arg, int arg_count, word_t **code_seg, int *seg_size, table_of_signs*, int table_signs_size, data_table **ext_table, int *ext_table_size);
 int find_label_address(char *label, table_of_signs*, int table_signs_size, int *is_external);
-int update_ext_table(data_table **table, int *table_size, char *label, int address);
-void ob_print(word_t *code_image, word_t *data_image, int inst_count, int data_count, FILE *obj_file);
 void convert_num_to_base_four_mozar(int num, char **p);
+
+/* db functions */
+int insert_sign(table_of_signs **table, int *table_size, char *sign_name, int address, int external, int operation);
+void signs_table_update(table_of_signs *table, int table_size, int inst_count);
+int update_ent_table(data_table **ent_table, int *ent_size, char *ent_label, table_of_signs *table_signs, int table_of_sings_size);
+int update_ext_table(data_table **table, int *table_size, char *label, int address);
+int code_insert(word_t **data_code_image,int *size, word_t new_word);
+void ob_print(word_t *code_image, word_t *data_image, int inst_count, int data_count, FILE *obj_file);
 void e_print(data_table *table, int table_size, FILE *file);
