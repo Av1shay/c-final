@@ -20,7 +20,7 @@ int insert_sign(table_of_signs **table, int *table_size, char *sign_name, int ad
 	size_t new_table_size;
 
     /* check if the sign already exists in the table */
-    if ( sign_already_exists(*table, (*table_size), sign_name) ) {
+    if ( sign_already_exists(*table, *table_size, sign_name) ) {
         return -1;
     }
 
@@ -31,7 +31,7 @@ int insert_sign(table_of_signs **table, int *table_size, char *sign_name, int ad
 	(*table)[(*table_size)-1].label_name = (char *)malloc(strlen(sign_name)); /*memory allocation for the new sign name */
 
 	if ( !(*table) || !(*table)[(*table_size)-1].label_name ) { /* if there is a memory allocation problem */
-		printf("cannot allocate memory for signs table");
+		fprintf(stderr, "cannot allocate memory for signs table");
 		(*table_size)--; /* the size hasn't changed */
 		return -2;
 	}
@@ -174,10 +174,7 @@ void ob_print(word_t *code_image, word_t *data_image, int inst_count, int data_c
     char *code_size = malloc(sizeof(char));
     char *data_size = malloc(sizeof(char));
     char *address = malloc(sizeof(char));
-    char *machine_code_oper = malloc(sizeof(char));
-    char *machine_code_amethod1 = malloc(sizeof(char));
-    char *machine_code_amethod2 = malloc(sizeof(char));
-    char *machine_code_memory = malloc(sizeof(char));
+    char *machine_code = malloc((sizeof(char) * BASE_4_WORD_SIZE) + 1);
 
     fprintf(obj_file, "%-30s", "Base 4 Address");
     fprintf(obj_file, "Base 4 Machine-Code\n");
@@ -197,45 +194,31 @@ void ob_print(word_t *code_image, word_t *data_image, int inst_count, int data_c
     /* print the code segment */
 	for ( j = 0, i = INITIAL_IC; j < inst_count; j++, i++ ) {
 		convert_num_to_base_four_mozar(i, &address);
-        convert_num_to_base_four_mozar(code_image[j].oper, &machine_code_oper);
-        convert_num_to_base_four_mozar(code_image[j].amethod_src_operand, &machine_code_amethod1);
-        convert_num_to_base_four_mozar(code_image[j].amethod_dest_operand, &machine_code_amethod2);
-        convert_num_to_base_four_mozar(code_image[j].memory, &machine_code_memory);
+        convert_word_to_base_four_mozar(code_image[j], &machine_code);
 
 		fprintf(obj_file, "%-30s", address);
-		fprintf(obj_file, "%s%s%s%s\n", machine_code_oper, machine_code_amethod1, machine_code_amethod2, machine_code_memory);
+		fprintf(obj_file, "%s\n", machine_code);
 
         /* reset the pointers for the next iteration */
         memset(address, '\0', 1);
-        memset(machine_code_oper, '\0', 1);
-        memset(machine_code_amethod1, '\0', 1);
-        memset(machine_code_amethod2, '\0', 1);
-        memset(machine_code_memory, '\0', 1);
+        memset(machine_code, '\0', 1);
 	}
 
     /* print the data segment */
 	for (j = 0, i = (inst_count + INITIAL_IC); j < data_count; j++, i++){
         convert_num_to_base_four_mozar(i, &address);
-        convert_num_to_base_four_mozar(data_image[j].oper, &machine_code_oper);
-        convert_num_to_base_four_mozar(data_image[j].amethod_src_operand, &machine_code_amethod1);
-        convert_num_to_base_four_mozar(data_image[j].amethod_dest_operand, &machine_code_amethod2);
-        convert_num_to_base_four_mozar(data_image[j].memory, &machine_code_memory);
+        convert_word_to_base_four_mozar(data_image[j], &machine_code);
 
         fprintf(obj_file, "%-30s", address);
-        fprintf(obj_file, "%s%s%s%s\n", machine_code_oper, machine_code_amethod1, machine_code_amethod2, machine_code_memory);
+        fprintf(obj_file, "%s\n", machine_code);
 
         /* reset the pointers for the next iteration */
         memset(address, '\0', 1);
-        memset(machine_code_oper, '\0', 1);
-        memset(machine_code_amethod1, '\0', 1);
-        memset(machine_code_amethod2, '\0', 1);
-        memset(machine_code_memory, '\0', 1);
+        memset(machine_code, '\0', 1);
 	}
+
     free(address);
-    free(machine_code_oper);
-    free(machine_code_amethod1);
-    free(machine_code_amethod2);
-    free(machine_code_memory);
+    free(machine_code);
 }
 
 

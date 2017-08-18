@@ -28,23 +28,30 @@ opers valid_operations[]={	/* array of the valid operations */
  *
  * @param char* label - The label to check for it's validity.
  *
- * @return int 0 if the syntax is valid, -1 otherwise.
+ * @return int 1 if the syntax is valid, 0 otherwise.
  */
 static int check_label(char label[LINE_MAX]) {
     unsigned int i;
 
-	if ( strlen(label) > LABEL_MAX || !isalpha(label[0]) )
-		return -1;
-	for ( i = 1; i < strlen(label); i++ ) /*for every character of the label*/
-		if ( !isalnum(label[i]) ) /* if there's a char that is not digit or english letter */
-			return -1;
-	for ( i = 0; i < 16; i++ ) /* check if the label is an operation name */
-		if ( strcmp(label, valid_operations[i].oper_name)==0 )
-			return -1;
-	if ( strlen(label) == 2 && label[0] == 'r' && label[1] <= '7' && label[1] >= '0' ) /*  check if the label is a register name */
-		return -1;
+	if ( strlen(label) > LABEL_MAX || !isalpha(label[0]) ) {
+        return 0;
+    }
 
-	return 0;
+	for ( i = 1; i < strlen(label); i++ ) { /*for every character of the label*/
+        if (! isalnum(label[i]) ) /* if there's a char that is not digit or english letter */
+            return 0;
+    }
+
+	for ( i = 0; i < 16; i++ ) {/* check if the label is an operation name */
+        if (strcmp(label, valid_operations[i].oper_name) == 0)
+            return 0;
+    }
+
+	if ( strlen(label) == 2 && label[0] == 'r' && label[1] <= '7' && label[1] >= '0' ) { /*  check if the label is a register name */
+        return 0;
+    }
+
+	return 1;
 }
 
 
@@ -83,10 +90,8 @@ static int check_operation(char op[LINE_MAX]) {
 /**
  * Checks argument syntax validity.
  *
- * @param arg
- * @return if the syntax is valid - a value that represents the address method used here
- * (MATRIX_ACCESS - matrix access addressing, DIRECT - direct addressing, DIRECT_REGISTER - a direct register addressing,
- * IMMEDIATE - immediate addressing). else: return -1
+ * @param char[]    arg - The argument.
+ * @return int - if the syntax is valid - return the addressing methods, -1 otherwise.
  */
 static int check_argument(char arg[LINE_MAX]){
     if ( arg[0] == '#' ) {
@@ -95,16 +100,17 @@ static int check_argument(char arg[LINE_MAX]){
         }
         return IMMEDIATE; /* no error - immediate addressing */
     }
-	if ( check_word(arg, LABEL) == 0 ) { /* direct addressing */
+	if ( check_word(arg, LABEL) ) { /* direct addressing */
         return DIRECT;
     }
     if ( is_valid_matrix_form(arg) ) {
         return MATRIX_ACCESS;
     }
-	if ( strlen(arg) == 2 && arg [0] == 'r' && arg[1] <= '7' && arg[1] >= '0' )
-		return DIRECT_REGISTER;
+	if ( strlen(arg) == 2 && arg [0] == 'r' && arg[1] <= '7' && arg[1] >= '0' ) {
+        return DIRECT_REGISTER;
+    }
 
-	return -2;
+	return -1;
 }
 
 /**
@@ -117,13 +123,13 @@ static int check_argument(char arg[LINE_MAX]){
  */
 int check_word(char word[LINE_MAX], int type){
 	if (type == LABEL)
-		return check_label(word); /* returns 0 if the label is valid */
+		return check_label(word); /* returns 1 if the label is valid, 0 otherwise */
 
 	if ( type == OPERATION )
 		return check_operation(word); /* returns the type of the instruction or operation code if the operation is valid */
 
-	/* type==ARGUMENT */
-	return check_argument(word); /* returns a value that represents the type of address method one uses */
+	/* type == ARGUMENT */
+	return check_argument(word); /* returns a value that represents the type of address method */
 
 }
 
@@ -155,8 +161,9 @@ int num_isvalid(char *arg){
 /**
  * Check if a given argument is in the form of a matrix access (i.e - "mat[2][3]").
  *
- * @param arg
- * @return boolean
+ * @param char* arg - The argument to test.
+ *
+ * @return int - 1 if it's valid, 0 otherwise.
  */
 int is_valid_matrix_form(char *arg){
     int i, parentheses_counter = 0, in_open_parentheses = 0;

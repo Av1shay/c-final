@@ -8,7 +8,6 @@
  * Using global variables most of the time consider as bad practice,
  * but if it's done right, they can be very efficient.
  */
-
 table_of_signs *table_signs;
 int table_signs_size;
 
@@ -31,9 +30,8 @@ int ext_size;  /* size of extern table */
  *
  * @return int 0 if everything went OK, 1 otherwise.
  */
-int first_scan(FILE *fp){
-    int i;
-    int matrix_size;
+    int first_scan(FILE *fp){
+    int matrix_size, i;
     int line_counter = 0; /* line number */
 	int error = 0; /* 1 if we found an error */
 	char line[LINE_MAX], temp[LINE_MAX], label[LINE_MAX], oper[LINE_MAX], arg1[LINE_MAX], arg2[LINE_MAX];
@@ -61,8 +59,8 @@ int first_scan(FILE *fp){
 		if ( temp[length-1] == ':' ){	/* if we read label */
 			temp[length-1] = '\0'; /* "delete" the : by putting \0 there */
 			strcpy(label,temp);
-			if ( check_word(label, LABEL) == -1 ) { /* check if it's valid label */
-				printf("line %d:\tinvalid label: '%s'\n",line_counter,label);
+			if ( ! check_word(label, LABEL) ) { /* check if it's valid label */
+				fprintf(stderr, "line %d:\tinvalid label: '%s'\n",line_counter,label);
 				error = 1;
 				continue;
 			}
@@ -80,6 +78,15 @@ int first_scan(FILE *fp){
 			error = 1;
 			continue;
 		}
+
+        /* ------------ ENTRY HANDLING --------------- */
+        if ( valid == ENTRY ) {
+            /*
+             * If the word was .entry, we don't have anything to do right now,
+             * we will handle this case in the second scan.
+             */
+            continue;
+        }
 
 		/* ------------ DATA HANDLING --------------- */
 		if ( valid == DATA ) { /* the operation we read was .data */
@@ -100,8 +107,8 @@ int first_scan(FILE *fp){
 				int num;
 				word_t op_num;
 				if ( !num_isvalid(arg1) ) { /* if it's invalid number */
-					printf("line %d:\t invalid number: %s\n", line_counter, arg1);
-					error=1;
+					fprintf(stderr, "line %d:\t invalid number: %s\n", line_counter, arg1);
+					error = 1;
 					break;
 				}
 				num = atoi(arg1); /* translate the number */
@@ -115,7 +122,7 @@ int first_scan(FILE *fp){
 			}
 			skip_white_space(line, &pos);
 			if ( line[pos] != '\n' ) { /* if the last char wasn't \n */
-				printf("line %d:\tinvalid list number\n",line_counter);
+				fprintf(stderr, "line %d:\tinvalid list number\n", line_counter);
 				error=1;
 				break;
 			}
@@ -153,7 +160,7 @@ int first_scan(FILE *fp){
 			skip_white_space(line, &pos);
 			length = get_new_word(line, arg1, &pos);
 			if ( length > 0 ) { /* if there was another word after the string */
-				printf("line %d:\t.string should have one argument\n", line_counter);
+				fprintf(stderr, "line %d:\t.string should have one argument\n", line_counter);
 				error = 1;
 				break;
 			}
@@ -166,7 +173,7 @@ int first_scan(FILE *fp){
             if ( is_label == 1 ) { /* we have a label on this line, insert it to our table of signs */
                 if ( (insert_status = insert_sign(&table_signs, &table_signs_size, label, dc, 0, 0)) != 1 ) {
                     if ( insert_status == -1 ) {
-                        printf("line %d:\tThe sign %s declared more then once\n", line_counter, label);
+                        fprintf(stderr, "line %d:\tThe sign %s declared more then once\n", line_counter, label);
                     }
                     error = 1;
                     break;
@@ -176,14 +183,14 @@ int first_scan(FILE *fp){
             skip_white_space(line, &pos);
             get_new_word(line, arg1, &pos); /* get matrix rows/columns count */
             if ( !is_valid_matrix_form(arg1) ) {
-                printf("line %d:\tThe matrix declaration is not valid.\n", line_counter);
+                fprintf(stderr, "line %d:\tThe matrix declaration is not valid.\n", line_counter);
                 error = 1;
                 break;
             }
 
             matrix_size = calculate_matrix_size(arg1);
             if ( matrix_size < 1 ) {
-                printf("line %d:\tMatrix rows and columns must be greater then zero.\n", line_counter);
+                fprintf(stderr, "line %d:\tMatrix rows and columns must be greater then zero.\n", line_counter);
                 error = 1;
                 break;
             }
@@ -192,14 +199,14 @@ int first_scan(FILE *fp){
             length = get_new_word(line, arg2, &pos);
             i = 0; /* this will tell us how many numbers there are at the end */
             while ( length > 0 ) { /* while we read a word */
-                unsigned int num;
+                int num;
                 word_t op_num;
                 if ( !num_isvalid(arg2) ) { /* if it's invalid number */
                     printf("line %d:\t invalid number: %s\n", line_counter, arg2);
                     error=1;
                     break;
                 }
-                num = (unsigned int) atoi(arg2); /* translate the number */
+                num = atoi(arg2); /* translate the number */
                 op_num = trans_to_word(num); /* change it to word_type */
                 if ( !code_insert(&data_seg, &dc, op_num) ) { /* add the data number to the data table */
                     error = 1;
@@ -211,22 +218,13 @@ int first_scan(FILE *fp){
             }
 
             skip_white_space(line, &pos);
-            if ( line[pos] != '\n' || i != matrix_size ) { /* if the last char wasn't \n, or if the numbers count doesn't fit the matrix size */
-                printf("line %d:\tError trying to assign list number to the matrix %s, the list is invalid.\n", line_counter, label);
+            if ( (line[pos] != '\n' &&  line[pos] != '\0') || i != matrix_size ) { /* if the last char wasn't \n or \0, or if the numbers count doesn't fit the matrix size */
+                fprintf(stderr, "line %d:\tError trying to assign list number to the matrix %s, the list is invalid.\n", line_counter, label);
                 error = 1;
                 break;
             }
             continue;
         }
-
-		/* ------------ ENTRY HANDLING --------------- */
-		if ( valid == ENTRY ) {
-            /*
-             * If the word was .entry, we don't have anything to do right now,
-             * we will handle this case in the second scan.
-             */
-			continue;
-		}
 
 		/* ------------ EXTERN HANDLING --------------- */
 		if ( valid == EXTERN ) { /*the word was .extern */
@@ -242,8 +240,8 @@ int first_scan(FILE *fp){
 			skip_white_space(line, &pos);
 			length = get_new_word(line, arg1, &pos);
 			if ( length > 0 ){ /* if there was another word after the extern */
-				printf("line %d:\t.extern should have one argument\n",line_counter);
-				error=1;
+				fprintf(stderr, "line %d:\t.extern should have one argument\n",line_counter);
+				error = 1;
 				break;
 			}
 			continue;
@@ -264,8 +262,12 @@ int first_scan(FILE *fp){
 
 		/* ------------ ARG1 HANDLING --------------- */
 		get_new_word(line, arg1, &pos);
+        if ( strlen(arg1) == 0 ) { /*if we don't have arguments */
+            continue;
+        }
+
 		if ( (valid = check_word(arg1, ARGUMENT)) == -1 ) { /* if the argument1 is invalid*/
-			printf("line %d:\tinvalid argument: '%s'\n", line_counter, arg1);
+			fprintf(stderr, "line %d:\tinvalid argument: '%s'\n", line_counter, arg1);
 			error = 1;
 			continue;
 		}
@@ -276,39 +278,34 @@ int first_scan(FILE *fp){
             case MATRIX_ACCESS:
                 ic += 2; /* we need two more spaces - one for the address of the matrix, and second for the relevant row/column */
                 break;
-            case DIRECT_REGISTER:
+            default: /* DIRECT_REGISTER */
                 ic++;
                 register_arg_flag = 1;
-            default:
-                /* TODO check if the default is needed */
-                break;
         }
 		skip_white_space(line, &pos);
 
 		/* ------------ ARG2 HANDLING --------------- */
 		get_new_word(line, arg2, &pos);
-        if ( strlen(arg2) == 0 ) { /*if we have only one argument */
+        if ( strlen(arg2) == 0 ) { /* if we have only one argument */
             continue;
         }
-		if ( (valid = check_word(arg2, ARGUMENT) ) == -1 ) { /*/if the argument2 is invalid*/
+
+		if ( (valid = check_word(arg2, ARGUMENT)) == -1 ) { /*/if the argument2 is invalid*/
 			printf("line %d:\tinvalid argument: '%s'\n", line_counter, arg2);
 			error=1;
 			continue;
 		}
         switch ( valid ) {
-            case DIRECT:
+            case DIRECT: case IMMEDIATE:
                 ic++; /* we should have new word for the label's address (or specified number) */
                 break;
             case MATRIX_ACCESS:
                 ic += 2; /* we need two more spaces - one for the address of the matrix, and second for the relevant row/column */
                 break;
-            case DIRECT_REGISTER:
-                if ( !register_arg_flag ) {
+            default : /* DIRECT_REGISTER */
+                if ( !register_arg_flag ) { /* if arg1 was a register, we don't need to increase ic as they share a common word */
                     ic++;
                 }
-            default:
-                /* TODO check if the default is needed */
-                break;
         }
 
 		/* ------------ EXCEPTION ARGS  --------------- */
@@ -429,7 +426,7 @@ int second_scan(FILE *fp){
         }
 
         if ( ! is_address_valid(address, arg1_exists ? arg1_amethod : NO_ARG, arg2_exists ? arg2_amethod : NO_ARG) ) {
-            printf("line %d:\tinvalid address\n", line_counter);
+            fprintf(stderr, "line %d:\tinvalid address\n", line_counter);
             error = 1;
             continue;
         }

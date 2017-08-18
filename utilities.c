@@ -224,8 +224,8 @@ word_t trans_arg_to_word(int num, int memory_type){
 /**
  * This function encodes a register to word_type.
  *
- * @param int   first_register_num - First register number, this will place in bits 2-5.
  * @param int   first_register_num - First register number, this will place in bits 6-9.
+ * @param int   first_register_num - First register number, this will place in bits 2-5.
  * @param int   memory_type - The memory type for the word. A, E or R.
  *
  * @return word_t - The encoded word.
@@ -235,17 +235,16 @@ word_t trans_regs_to_word(int first_register_num, int second_register_num, int m
     opcode_num.oper = opcode_num.amethod_src_operand = opcode_num.amethod_dest_operand = opcode_num.memory = 0;
 
     if ( (first_register_num < pow(2, WORD_MAX) && first_register_num > -pow(2, WORD_MAX)) ||  second_register_num < pow(2, WORD_MAX) && second_register_num > -pow(2, WORD_MAX)) {
-        int mask = 3; /* mask for the ints that should have only one bits */
-        int mask2 = 15; /* mask for the "oper" member, which should have four bits */
+        int mask = 3; /* mask the last two bits */
 
-        opcode_num.memory = memory_type;
+        opcode_num.memory = (unsigned) memory_type;
 
-        opcode_num.amethod_dest_operand = first_register_num & mask;
-        first_register_num >>= 2;
+        opcode_num.amethod_dest_operand = (unsigned) second_register_num & mask;
+        second_register_num >>= 2;
 
-        opcode_num.amethod_src_operand = first_register_num & mask;
+        opcode_num.amethod_src_operand = (unsigned) second_register_num & mask;
 
-        opcode_num.oper = second_register_num & mask2;
+        opcode_num.oper = (unsigned) first_register_num;
 
 
     } else {
@@ -343,7 +342,7 @@ int is_register(char *str){
 void encode_argument(char *arg, int amethod, char *additional_arg, int arg_count, word_t **code_seg, int *seg_size, table_of_signs *table_signs, int table_signs_size, data_table **ext_table, int *ext_table_size){
     word_t word_to_append;
     word_t sec_word_to_append; /* if need to encode another word, for matrices for example */
-    int address, reg1_num, reg2_num, second_word = 0;
+    int address, reg1_num, reg2_num, has_second_word = 0;
     int is_external = 0;
     char *mat_label, *reg1, *reg2;
 
@@ -379,7 +378,7 @@ void encode_argument(char *arg, int amethod, char *additional_arg, int arg_count
             reg1 = malloc(sizeof(char) * 3);
             reg2 = malloc(sizeof(char) * 3);
             if ( !mat_label || !reg1 || !reg2 ) {
-                printf("Error allocating memory\n");
+                fprintf(stderr, "Error allocating memory\n");
                 return;
             }
 
@@ -397,7 +396,7 @@ void encode_argument(char *arg, int amethod, char *additional_arg, int arg_count
             reg1_num = find_reg_num(reg1);
             reg2_num = find_reg_num(reg2);
             sec_word_to_append = trans_regs_to_word(reg1_num, reg2_num, A);
-            second_word = 1;
+            has_second_word = 1;
 
             free(mat_label);
             free(reg1);
@@ -416,9 +415,9 @@ void encode_argument(char *arg, int amethod, char *additional_arg, int arg_count
                 reg2_num = find_reg_num(arg);
                 if ( is_register(additional_arg) ) { /* if arg2 is also a register */
                     reg1_num = find_reg_num(additional_arg); /* going to be encoded to bits 2-5 */
-                    word_to_append = trans_regs_to_word(reg1_num, reg2_num, A);
+                    word_to_append = trans_regs_to_word(reg2_num, reg1_num, A);
                 } else { /* only arg1 is register, encode it to bits 9-6 */
-                    word_to_append = trans_regs_to_word(0, reg2_num, A);
+                    word_to_append = trans_regs_to_word(reg2_num, 0, A);
                 }
             } else { /* SECOND_ARG */
                 if ( is_register(additional_arg) ) { /* if arg1 is also a register, we already took care of this. leave the function */
@@ -426,7 +425,7 @@ void encode_argument(char *arg, int amethod, char *additional_arg, int arg_count
                 }
                 /* if only arg2 is a register, this is a destination operand - encode it to bits 2-5 */
                 reg1_num = find_reg_num(arg);
-                word_to_append = trans_regs_to_word(reg1_num, 0, A);
+                word_to_append = trans_regs_to_word(0, reg1_num, A);
             }
 
             break;
@@ -434,7 +433,7 @@ void encode_argument(char *arg, int amethod, char *additional_arg, int arg_count
     }
 
     code_insert(code_seg, seg_size, word_to_append);
-    if ( second_word ) {
+    if ( has_second_word ) {
         code_insert(code_seg, seg_size, sec_word_to_append);
     }
 
@@ -490,7 +489,7 @@ void convert_num_to_base_four_mozar(int num, char **p){
      * This will give us the digits from the least significant digit, so we'll reverse the string at the end.
      */
     while ( base_4_num ) {
-        (*p) = realloc((*p), sizeof(char));
+        (*p) = realloc((*p), (sizeof(char) + i));
         int digit = base_4_num % 10;
 
         switch ( digit ) {
@@ -516,8 +515,49 @@ void convert_num_to_base_four_mozar(int num, char **p){
         i++;
     }
 
+    (*p) = realloc((*p), (sizeof(char) + 1));
     (*p)[i] = '\0';
     temp = (*p);
     (*p) = reverse_string(*p);
-    free(temp);
+    free(temp); /* free the unreversed string */
+}
+
+/**
+ *
+ * @param word
+ * @param p
+ */
+void convert_word_to_base_four_mozar(word_t word, char **p){
+    int mask = 3; /* mask the last two bits */
+    int num_to_convert; /* will hold the number that we gonna convert each time */
+    char *p1, *p2, *p3, *p4, *p5; /* these pointers point on each individual base 4 mozar chars */
+
+    p1 = malloc(sizeof(char));
+    p2 = malloc(sizeof(char));
+    p3 = malloc(sizeof(char));
+    p4 = malloc(sizeof(char));
+    p5 = malloc(sizeof(char));
+
+    num_to_convert = word.oper & mask;
+    convert_num_to_base_four_mozar(num_to_convert, &p2);
+    word.oper >>= 2;
+
+    num_to_convert = word.oper & mask;
+    convert_num_to_base_four_mozar(num_to_convert, &p1);
+
+    convert_num_to_base_four_mozar(word.amethod_src_operand, &p3);
+    convert_num_to_base_four_mozar(word.amethod_dest_operand, &p4);
+    convert_num_to_base_four_mozar(word.memory, &p5);
+
+    strcat((*p), p1);
+    strcat((*p), p2);
+    strcat((*p), p3);
+    strcat((*p), p4);
+    strcat((*p), p5);
+
+    free(p1);
+    free(p2);
+    free(p3);
+    free(p4);
+    free(p5);
 }

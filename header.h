@@ -3,11 +3,15 @@
 #define LABEL_MAX 31
 #define NUM_OF_OPERATIONS 16
 #define INITIAL_IC 100
+#define NO_ARG 20
+#define BASE_4_WORD_SIZE 5
+
+/* Addressing methods */
 #define IMMEDIATE 0
 #define DIRECT 1
 #define MATRIX_ACCESS 2
 #define DIRECT_REGISTER 3
-#define NO_ARG 20
+
 
 enum {A = 0, E, R}; /* memory type - A for absolute, E for external, and R for relocatable memory */
 enum {LABEL = 1, OPERATION, ARGUMENT};
@@ -59,6 +63,7 @@ int calculate_matrix_size(char *arg);
 word_t trans_regs_to_word(int first_register_num, int second_register_num, int memory_type);
 void encode_argument(char *arg, int amethod, char *additional_arg, int arg_count, word_t **code_seg, int *seg_size, table_of_signs*, int table_signs_size, data_table **ext_table, int *ext_table_size);
 int find_label_address(char *label, table_of_signs*, int table_signs_size, int *is_external);
+void convert_word_to_base_four_mozar(word_t word, char **p);
 void convert_num_to_base_four_mozar(int num, char **p);
 
 /* db functions */
