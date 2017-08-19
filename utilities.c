@@ -574,3 +574,17 @@ void convert_word_to_base_four_mozar(word_t word, char **p){
     free(p4);
     free(p5);
 }
+
+/**
+ * Free all names strings in the signs table.
+ *
+ * @param table_signs
+ * @param table_size
+ */
+void free_signs_names(table_of_signs *table_signs, int table_size){
+    int i;
+
+    for ( i = 0; i < table_size; i++ ) {
+        free(table_signs[i].label_name);
+    }
+}

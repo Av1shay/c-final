@@ -590,6 +590,7 @@ int main(int argc, char *argv[]){
 		 /*------------ Free Allocation & Close Files ---------------*/
 		free(code_seg);
 		free(data_seg);
+        free_signs_names(table_signs, table_signs_size);
 		free(table_signs);
 		fclose(fp);
 

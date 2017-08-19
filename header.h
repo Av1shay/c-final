@@ -68,6 +68,7 @@ void convert_word_to_base_four_mozar(word_t word, char **p);
 void convert_num_to_base_four_mozar(int num, char **p);
 void extract_mat_label(char *src_label, char **dest_label);
 int is_valid_register(char *reg);
+void free_signs_names(table_of_signs *table_signs, int table_size);
 
 /* db functions */
 int insert_sign(table_of_signs **table, int *table_size, char *sign_name, int address, int external, int operation);
