@@ -188,7 +188,7 @@ int first_scan(FILE *fp){
             get_new_word(line, arg1, &pos); /* get matrix rows/columns count */
             matrix_size = calculate_matrix_size(arg1);
             if ( matrix_size < 1 ) {
-                fprintf(stderr, "line %d:\tMatrix rows and columns must be greater then zero.\n", line_counter);
+                fprintf(stderr, "line %d:\tMatrix rows and columns must be natural numbers.\n", line_counter);
                 error = 1;
                 continue;
             }
@@ -482,7 +482,7 @@ int second_scan(FILE *fp){
 }
 
 /**
- * Handling User Interactive. get files, processing and generating error & info.
+ * Handling user interactive. get files, processing and generating error & info.
  *
  * @param int       argc - Number of argument.
  * @param char**    argv - Array of arguments.
@@ -513,7 +513,7 @@ int main(int argc, char *argv[]){
 
 		table_signs_size = ent_size = ext_size = 0;  /*the lines of ENTRY and EXTERN file*/
 
-		name = malloc(strlen(argv[i])+3);/*file name*/
+		name = malloc(strlen(argv[i])+3); /*file name*/
 		strcpy(name, argv[i]);  /*copy the file name*/
 		name = strcat(name,".as");  /*add .as*/
 		if (!(fp = fopen(name,"r") )) {  /*oper .as for read*/
@@ -539,6 +539,7 @@ int main(int argc, char *argv[]){
 		}
 
 		/*  ------------ So Far So Good --------------- */
+
 		if ( ic + dc > 0 ) {  /* if the length of the OB file is >0 */
 			strcpy(name, argv[i]);
 			name = strcat(name, ".ob");  /* add .ob */
