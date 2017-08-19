@@ -60,7 +60,7 @@ int first_scan(FILE *fp){
 			temp[length-1] = '\0'; /* "delete" the : by putting \0 there */
 			strcpy(label,temp);
 			if ( ! check_word(label, LABEL) ) { /* check if it's valid label */
-				fprintf(stderr, "line %d:\tinvalid label: '%s'\n",line_counter,label);
+				fprintf(stderr, "line %d:\tinvalid label: '%s'\n", line_counter,label);
 				error = 1;
 				continue;
 			}
@@ -74,7 +74,7 @@ int first_scan(FILE *fp){
 
 		/* ------------ CHECK OPERATION --------------- */
 		if ( ( valid = check_word(oper, OPERATION)) == -1 ){ /* check if the word is invalid */
-			fprintf(stderr, "invalid operation: %s\n", oper);
+			fprintf(stderr, "line %d:\tinvalid operation: %s\n", line_counter, oper);
 			error = 1;
 			continue;
 		}
@@ -107,7 +107,7 @@ int first_scan(FILE *fp){
 				int num;
 				word_t op_num;
 				if ( !num_isvalid(arg1) ) { /* if it's invalid number */
-					fprintf(stderr, "line %d:\tinvalid number: %s\n", line_counter, arg1);
+					fprintf(stderr, "line %d:\tInvalid number: %s\n", line_counter, arg1);
 					error = 1;
                     local_error = 1;
 					break;
@@ -127,7 +127,7 @@ int first_scan(FILE *fp){
 
 			skip_white_space(line, &pos);
 			if ( line[pos] != '\n' && line[pos] != '\0' ) { /* if the last char wasn't \n and wasn't \0 */
-				fprintf(stderr, "line %d:\tinvalid list number\n", line_counter);
+				fprintf(stderr, "line %d:\tInvalid list number\n", line_counter);
 				error = 1;
 			}
 			continue;
@@ -200,7 +200,7 @@ int first_scan(FILE *fp){
                 int num;
                 word_t op_num;
                 if ( !num_isvalid(arg2) ) { /* if it's invalid number */
-                    fprintf(stderr, "line %d:\tinvalid number: %s\n", line_counter, arg2);
+                    fprintf(stderr, "line %d:\tInvalid number: %s\n", line_counter, arg2);
                     error = 1;
                     local_error = 1;
                     break;
@@ -341,12 +341,16 @@ int second_scan(FILE *fp){
     int arg1_exists;
     int arg2_exists;
     int address;
+    int arg1_amethod;
+    int arg2_amethod;
+    int src_operand_amethod;
+    int dest_operand_amethod;
+
     word_t current_code; /* current code */
 
     rewind(fp);
     ic = 0;
 
-    int arg1_amethod, arg2_amethod;
 
     while ( fgets(line, LINE_MAX, fp) ) { /* get line */
 
@@ -431,21 +435,28 @@ int second_scan(FILE *fp){
             fprintf(stderr, "line %d:\tUndefined label: %s\n", line_counter, arg2);
         }
 
-
-        if ( ! is_address_valid(address, arg1_exists ? arg1_amethod : NO_ARG, arg2_exists ? arg2_amethod : NO_ARG) ) {
-            fprintf(stderr, "line %d:\tinvalid address\n", line_counter);
-            error = 1;
-            continue;
-        }
-
         /* if we have two arguments, the first one is going to be the source operand */
         if ( arg1_exists && arg2_exists ) {
             current_code.amethod_src_operand = (unsigned) arg1_amethod;
             current_code.amethod_dest_operand = (unsigned) arg2_amethod;
+            src_operand_amethod = arg1_amethod;
+            dest_operand_amethod = arg2_amethod;
         }
         /* if we have one argument, he is going to be destination operand */
         else if ( arg1_exists &&  !arg2_exists ) {
             current_code.amethod_dest_operand = (unsigned) arg1_amethod;
+            src_operand_amethod = NO_ARG;
+            dest_operand_amethod = arg1_amethod;
+        }
+        else { /* both not exists */
+            src_operand_amethod = dest_operand_amethod = NO_ARG;
+        }
+
+        /* check if the addressing method fits the operation */
+        if ( ! is_address_valid(address, src_operand_amethod, dest_operand_amethod) ) {
+            fprintf(stderr, "line %d:\tinvalid address\n", line_counter);
+            error = 1;
+            continue;
         }
 
         /* encode the operation */
@@ -472,7 +483,7 @@ int second_scan(FILE *fp){
         /* ------------ EXCEPTION ARGS  --------------- */
         skip_white_space(line, &pos);
         if ( line[pos] != '\n' && line[pos] != '\0' ) { /*if after the 2 arguments we have more */
-            fprintf(stderr, "line %d:\ttoo much parameters\n",line_counter);
+            fprintf(stderr, "line %d:\tToo much parameters\n",line_counter);
             error = 1;
             break;
         }

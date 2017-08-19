@@ -211,9 +211,7 @@ int check_word(char word[LINE_MAX], int type){
  * @return bool
  */
 int num_isvalid(char *arg){
-
 	unsigned int i;
-    int num = atoi(arg);
 
 	if ( arg[0] == '\0' ) { /* if the word is empty - it's invalid, return 0 */
         return 0;
@@ -294,7 +292,7 @@ int sign_already_exists(table_of_signs *table, int row_counter, char *sign_name)
  * @param int     marg2 - Addressing method of the second argument.
  * @return bool
  */
-int is_address_valid(int oper, int dest_operand, int src_operand){
+int is_address_valid(int oper, int src_operand, int dest_operand){
     switch ( oper ) {
         case 0: /* mov */
             if ( src_operand == NO_ARG || dest_operand == NO_ARG || dest_operand == IMMEDIATE )
@@ -362,9 +360,10 @@ int is_address_valid(int oper, int dest_operand, int src_operand){
             break;
 
         default:
-            return 1;
-
+            break;
     }
+
+    return 1;
 }
 
 /**

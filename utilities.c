@@ -245,7 +245,7 @@ word_t trans_regs_to_word(int first_register_num, int second_register_num, int m
     word_t opcode_num;
     opcode_num.oper = opcode_num.amethod_src_operand = opcode_num.amethod_dest_operand = opcode_num.memory = 0;
 
-    if ( (first_register_num < pow(2, WORD_MAX) && first_register_num > -pow(2, WORD_MAX)) ||  second_register_num < pow(2, WORD_MAX) && second_register_num > -pow(2, WORD_MAX)) {
+    if ( (first_register_num < pow(2, WORD_MAX) && first_register_num > -pow(2, WORD_MAX)) ||  (second_register_num < pow(2, WORD_MAX) && second_register_num > -pow(2, WORD_MAX)) ) {
         int mask = 3; /* mask the last two bits */
 
         opcode_num.memory = (unsigned) memory_type;
@@ -494,6 +494,7 @@ void convert_num_to_base_four_mozar(int num, char **p){
     int i = 0;
     int base_4_num = convert_to_base_four(num);
     char *temp;
+    int digit;
 
     /*
      * Get each digit of the base-4 number.
@@ -501,7 +502,7 @@ void convert_num_to_base_four_mozar(int num, char **p){
      */
     while ( base_4_num ) {
         (*p) = realloc((*p), (sizeof(char) + i));
-        int digit = base_4_num % 10;
+        digit = base_4_num % 10;
 
         switch ( digit ) {
             case 0:
